@@ -132,6 +132,11 @@ function bookHtml(s){
 let q="", line="全部", page=null, held=false, stateText="等待行情", style="短线";
 try{ style=localStorage.getItem("fupan-style")||"短线"; }catch(e){}
 const LINES=["全部","医药","锂电","地产","辅助"];
+const PICKS=[
+  {code:"002074", line:"锂电", role:"核心", note:"容量还能跟。洗霸离开太远，不放在这一格。"},
+  {code:"603127", line:"医药", role:"核心", note:"只留这一只。药明未企稳之前，不新开。"},
+  {code:"000011", line:"地产", role:"核心", note:"上一张的核心。10月8日万科没接，这个方向撤出。"}
+];
 function book(){ try{return JSON.parse(localStorage.getItem("fupan-book")||"[]")}catch(e){return[]} }
 function saveBook(items){ localStorage.setItem("fupan-book", JSON.stringify(items)) }
 function cores(){
@@ -153,40 +158,34 @@ function home(){
   </header>
   <div class="pad">
     ${q.trim()? `<section class="card sec">${hits.length? hits.map(s=>{const g=guide(s);return `<a class="hit" href="#${s.code}"><span><b>${s.name}</b><br><span class="muted" style="font-size:12px">${s.code} · ${NOTES[s.code]?NOTES[s.code].role:"非核心"} · ${g.pattern}</span></span><span class="${cls(s.chg)}">${pct(s.chg)}</span></a>`}).join(""):'<p class="muted" style="padding:1rem">没有这只。换个代码或名称。</p>'}</section>` : `
-    <section class="card pad sec">
-      <p class="k">复盘 10月8日 · 用于 10月9日</p>
-      <h2>节后分歧，不是修复</h2>
-      <p>上证盘中 3864.12，收 3811.90，跌 0.79%。创业板跌 3.15%，科创 50 跌 4.82%。指数分化，承压的是成长，不是上证这一点跌幅。</p>
-      <p>涨停 43 家，炸板 32 家，跌停 13 家，炸板率 42.7%。封板质量差。新华传媒 8 板，不能作为市场回暖的证据。</p>
-      <p>仓位维持低位。基础 0 到 1 成，单只 0.5 成。三个方向同时确认，最多 2 成。没有回踩，不开新仓。</p>
-      <div class="line"><p style="margin:0;font-weight:600">锂电</p><p>电池涨停 8 家，上海洗霸 3 板，时代万恒 4 板，紫竹高科 3 板。资金仍在这条线，但连板价格已经明显离开 5 日线。方向成立，不等于当前位置可以参与。</p><p class="muted">条件：洗霸不走坏，价格回到 5 日线附近，国轩仍跟随。只剩高位连板、容量掉队，放弃。</p></div>
-      <div class="line"><p style="margin:0;font-weight:600">医药</p><p>昭衍新药涨 5.60%，药明康德跌 3.19%，义翘神州跌 7.06%。容量和弹性没有共振，按个股处理，不按主线加仓。</p><p class="muted">药明不再创新低、昭衍守住 5 日线，再观察。昭衍单独冲高，不追。</p></div>
-      <div class="line"><p style="margin:0;font-weight:600">地产</p><p>上一张的条件是万科和深物业同时承接。10 月 8 日万科跌 4.69%，深物业跌 0.98%，条件没有满足。陆家嘴 2 板不能替代容量。这个方向今日撤出。</p></div>
-      <div class="line"><p class="k">出手三只 · 均不追价</p>
-        <p style="font-weight:600">上海洗霸 <span class="muted" style="font-weight:400;font-size:12px">603200</span></p><p class="muted">收 49.21。介入区间 41.56–43.24，离场 41.98。现价不在区间内，不介入。跌破 41.98 退出。电池若无其他涨停，这个区间也放弃。</p>
-        <p style="font-weight:600">国轩高科 <span class="muted" style="font-weight:400;font-size:12px">002074</span></p><p class="muted">收 31.30。介入区间 28.18–29.31，离场 28.46。洗霸还在、价格进区间，试错 0.5 成。现价不追。收盘跌破 28.46 退出。</p>
-        <p style="font-weight:600">昭衍新药 <span class="muted" style="font-weight:400;font-size:12px">603127</span></p><p class="muted">收 52.06。介入区间 47.12–49.03，离场 47.60。药明未企稳不新开。现价不在区间内。收盘跌破 47.60 退出。</p>
-      </div>
-      <p class="muted">只观察，不计入出手：时代万恒 4 板，偏离 5 日线，不排队。深物业、万科今日不作为核心。新华传媒 8 板单独看，不外推。紫竹高科、九阳股份不属于这三条线。</p>
-      <p>本张自 10 月 8 日收盘起算。9 月 30 日那张样本不改。札记给的是框架和条件，不是每日报票。一次做对，不能说明方法已经掌握。</p>
-    </section>
-    <section class="card pad sec">
-      <p class="k">上一张 · 9月30日三只核心到10月8日收盘</p>
-      <p style="font-family:Palatino,Songti SC,serif;font-size:1.5rem">三只核心等权 +4.87%</p>
-      <p class="muted">按每只半成算，对账户的影响大约 +0.73%。</p>
-      <div style="border-top:1px solid var(--line);border-bottom:1px solid var(--line);margin-top:.75rem">
-        ${sample.map(r=>`<div class="row" style="padding:.5rem 0;border-bottom:1px solid var(--line)"><span>${r[1]}</span><span class="${cls(r[2])}">${pct(r[2])}</span></div>`).join("")}
-      </div>
-      <p class="muted">同页点到、但不是这三只出手核心的：${watch.map(r=>r[1]+" "+pct(r[2])).join("，")}。</p>
-      <p class="brass">按札记写明的价格和仓位计算。未按切入价和 0.5 成执行的，不计入这张札记的成绩。</p>
-    </section>
-    <section class="sec"><h2 style="font-size:1.125rem">持仓记录</h2><p class="muted">在个股页填写成本和仓位。记录只留在本机，不计入札记样本。</p></section>
-    <div class="tags">${LINES.map(x=>`<button class="${x===line?"on":""}" data-line="${x}">${x}</button>`).join("")}</div>
+    <p class="k sec">10月8日收盘 · 给10月9日 · 每个行业一只</p>
     <div class="tags">${["短线","波段","趋势","长线"].map(x=>`<button data-style="${x}" class="${style===x?"on":""}">${x}</button>`).join("")}</div>
-    ${cores().map(s=>{
-      const g=guide(s), n=NOTES[s.code], m=MA[s.code], plan=planLevels(s);
-      return `<a class="card core" href="#${s.code}"><p class="k" style="color:var(--up)">${n.line} · ${n.role} · ${style}</p><div class="row"><h2 style="font-size:1.25rem">${s.name}</h2><p class="${cls(s.chg)}" style="margin:0">${pct(s.chg)}</p></div><div class="g3"><div><p class="k">5日线</p><p style="margin:0">${m?n2(m[0]):"—"}</p></div><div><p class="k">介入</p><p style="margin:0">${plan.entry}</p></div><div><p class="k">离场</p><p style="margin:0">${plan.exit}</p></div></div><p class="muted">${plan.above?"现价不介入。":""}${plan.why}</p></a>`;
+    ${PICKS.map(item=>{
+      const s=BY[item.code], plan=planLevels(s);
+      return `<a class="card core" href="#${s.code}"><p class="k" style="color:var(--up)">${item.line} · ${item.role}</p><div class="row"><h2>${s.name}</h2><p class="${cls(s.chg)}" style="margin:0">${pct(s.chg)}</p></div><p class="muted" style="margin-top:.35rem">${n2(s.px)} · 介入 ${plan.entry} · 离场 ${plan.exit}</p><p style="font-weight:600">${plan.above?"不介入":"价格在区间内，再核对条件"}</p><p class="muted">${item.note}</p></a>`;
     }).join("")}
+    <section class="card pad sec">
+      <p class="k">历史库 · 按买法</p>
+      <div class="g3">
+        <div><p class="k">出手</p><p style="margin:0;font-weight:600">0 笔</p></div>
+        <div><p class="k">胜率</p><p style="margin:0;font-weight:600">—</p></div>
+        <div><p class="k">收益率</p><p style="margin:0;font-weight:600">0.00%</p></div>
+      </div>
+      <p class="muted">已完结 1 张。只统计进了介入区间、并且按离场价执行的笔。没进场的不算出手，也不把涨跌算进收益。</p>
+      <div class="line"><p style="margin:0;font-weight:600">9月30日 → 10月8日</p><p class="muted">昭衍、洗霸、深物业都没有在介入区间成交。出手 0。胜率无样本。收益 0。</p></div>
+    </section>
+    <p class="k sec">重点行业里的其他票</p>
+    <div class="tags">${LINES.map(x=>`<button class="${x===line?"on":""}" data-line="${x}">${x}</button>`).join("")}</div>
+    ${cores().filter(s=>!PICKS.some(item=>item.code===s.code)).map(s=>{
+      const n=NOTES[s.code], plan=planLevels(s);
+      return `<a class="card core" href="#${s.code}"><p class="k" style="color:var(--up)">${n.line} · ${n.role}</p><div class="row"><h2 style="font-size:1.25rem">${s.name}</h2><p class="${cls(s.chg)}" style="margin:0">${pct(s.chg)}</p></div><p class="muted">介入 ${plan.entry} · 离场 ${plan.exit}${plan.above?" · 不介入":""}</p></a>`;
+    }).join("")}
+    <section class="card pad sec">
+      <p class="k">这张的环境</p>
+      <p>上证收 3811.90，跌 0.79%。创业板跌 3.15%。涨停 43，炸板 32，炸板率 42.7%。仓位 0 到 1 成，单只 0.5 成。没有回到介入区间，不开新仓。</p>
+      <p class="muted">锂电还有资金，但连板已经离开 5 日线。医药没有共振。地产的条件没满足，方向撤出。时代万恒、新华传媒只观察。</p>
+    </section>
+    <section class="sec"><h2 style="font-size:1.125rem">持仓记录</h2><p class="muted">在个股页填写成本和仓位。记录只留在本机，不计入历史库。</p></section>
     `}
   </div>`;
 }
