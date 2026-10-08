@@ -125,10 +125,34 @@ function maText(px, code){
 let q="", line="全部", page=null, held=false, stateText="等待行情", style="短线";
 try{ style=localStorage.getItem("fupan-style")||"短线"; }catch(e){}
 const LINES=["全部","医药","锂电","地产","辅助"];
-const PICKS=[
-  {code:"603906", line:"锂电", role:"10月8日核心", note:"2板，成交17亿，这条线里成交最大。洗霸3板、时代万恒4板更高，不放主位。涨停价不追。"},
-  {code:"601975", line:"油运", role:"10月8日核心", note:"首板，成交14.7亿，中远海能同向。这是当天新起来的方向，不追板。"}
+const BOOKS=[
+  {id:"短线", rule:"先等亏钱效应收敛。下面三只都不是今天的买点，四项缺一就继续空仓。", names:[
+    {code:"603200", advice:"旧核心先止跌，再看竞价有没有成交、回踩有没有承接、锂电至少还有两只、国轩是否同步。全有才试错 0.5 成。缩量加速或回封失败，放弃。"},
+    {code:"600026", advice:"只在首板次日有换手、招商南油有溢价、招商轮船还在承接、市场亏钱收敛时试错。高开回吐，放弃。不和招商轮船叠成两笔。"},
+    {code:"002687", advice:"观察，不预设买入。没有换手晋级，或者红豆不承接，放弃。不为了凑第三条线开仓。"}
+  ]},
+  {id:"波段", rule:"不做涨停。这三只和短线不是同一张名单，看的是回落后的区间。", names:[
+    {code:"600256", advice:"收 6.80，日内 6.72–6.90。还没站上 9 月 24 日的 6.82。能源扩散并且放量过 6.90 才看。业绩预告兑现了还不涨，停止。"},
+    {code:"000949", advice:"收 6.59，冲到 6.88 没站住。这是氨纶去库，不是服装涨停。回到 6.40 附近再评估，不追 6.88。"},
+    {code:"601208", advice:"收 50.92，涨 5.60%，不是涨停。材料有承接，但科技整体在跌。只观察，板块继续弱就不做。BCB 还在认证，不能当成已经放量的订单。"}
+  ]},
+  {id:"趋势", rule:"等回踩之后重新向上。不和短线同一天、同一个方向开两笔。", names:[
+    {code:"002074", advice:"收 31.30，从 32.14 回到 29.47 之上。这个区间不是买点。锂电梯队还在、回踩后再向上，最多 0.5 成。放量不涨，减。"},
+    {code:"601872", advice:"收 22.03，成交 50.13 亿。市场止跌、油运还联动、回踩再转强，才试错。放量滞涨或租金回落，减。不和中远海能叠仓。"}
+  ]},
+  {id:"长线", rule:"不按一天的涨跌进出。看兑现，不看明天竞价。", names:[
+    {code:"601225", advice:"收 26.60，涨 2.19%。长协和销量还在才留。这一天的涨跌不加仓，也不因为没涨停就卖。"},
+    {code:"300073", advice:"收 41.28。固态看的是认证和交付，不跟洗霸的 3 板。产线调试不是订单。"},
+    {code:"600583", advice:"收 6.61，跌 0.15%。在手订单还在就继续跟踪。油运涨停不是它的买点。工期和结算变差，再降级。"}
+  ]}
 ];
+const CLOSE2={"002687":{name:"乔治白",px:6.14,chg:10.04,hi:6.14,lo:5.93,amt:1.29},"600256":{name:"广汇能源",px:6.80,chg:1.95,hi:6.90,lo:6.72,amt:8.73},"000949":{name:"新乡化纤",px:6.59,chg:2.33,hi:6.88,lo:6.40,amt:3.69},"601208":{name:"东材科技",px:50.92,chg:5.60},"601872":{name:"招商轮船",px:22.03,chg:9.33,hi:22.17,lo:21.15,amt:50.13},"600026":{name:"中远海能",px:22.62,chg:10.02,hi:22.62,lo:21.70,amt:8.70},"601225":{name:"陕西煤业",px:26.60,chg:2.19,hi:26.92,lo:25.76,amt:11.07},"300073":{name:"当升科技",px:41.28,chg:6.17,hi:41.88,lo:39.51,amt:15.38},"600583":{name:"海油工程",px:6.61,chg:-0.15,hi:6.80,lo:6.56,amt:3.97}};
+for (const code in CLOSE2) if (BY[code]) Object.assign(BY[code], CLOSE2[code]);
+function playOf(code){
+  const out=[];
+  for (const b of BOOKS) for (const n of b.names) if (n.code===code) out.push({id:b.id, advice:n.advice});
+  return out;
+}
 NOTES["603906"]={line:"锂电",role:"本张核心",extra:"10月8日收盘后改的核心，不是9月30日那张。2板，成交17亿。涨停价不追，回到5日线附近再评估。"};
 NOTES["601975"]={line:"油运",role:"本张核心",extra:"10月8日首板，中远海能同向。不追涨停。只有它强、中远走弱，这个方向放弃。"};
 const CLOSE={"603906":{name:"龙蟠科技",px:20.94,chg:9.98,hi:20.94,lo:19.20,amt:17.06},"601975":{name:"招商南油",px:4.97,chg:9.96,hi:4.97,lo:4.68,amt:14.67},"600026":{name:"中远海能",px:22.62,chg:10.02,hi:22.62,lo:21.70,amt:8.70},"603200":{name:"上海洗霸",px:49.21,chg:9.99,hi:49.21,lo:44.49,amt:15.34},"600241":{name:"时代万恒",px:10.69,chg:9.98,hi:10.69,lo:9.27,amt:3.26},"002074":{px:31.30,chg:6.10,hi:32.14,lo:29.47,amt:36.66}};
@@ -165,13 +189,11 @@ function home(){
   </header>
   <div class="pad">
     ${q.trim()? `<section class="card sec">${hits.length? hits.map(s=>{const g=guide(s);return `<a class="hit" href="#${s.code}"><span><b>${s.name}</b><br><span class="muted" style="font-size:12px">${s.code} · ${NOTES[s.code]?NOTES[s.code].role:"非核心"} · ${g.pattern}</span></span><span class="${cls(s.chg)}">${pct(s.chg)}</span></a>`}).join(""):'<p class="muted" style="padding:1rem">没有这只。换个代码或名称。</p>'}</section>` : `
-    <p class="k sec">10月8日收盘 · 给10月9日 · 每个行业一只</p>
-    <div class="tags">${["短线","波段","趋势","长线"].map(x=>`<button data-style="${x}" class="${style===x?"on":""}">${x}</button>`).join("")}</div>
-    ${PICKS.map(item=>{
-      const s=BY[item.code], plan=planLevels(s);
-      return `<a class="card core" href="#${s.code}"><p class="k" style="color:var(--up)">${item.line} · ${item.role}</p><div class="row"><h2>${s.name}</h2><p class="${cls(s.chg)}" style="margin:0">${pct(s.chg)}</p></div><p class="muted" style="margin-top:.35rem">${n2(s.px)} · 介入 ${plan.entry} · 离场 ${plan.exit}</p><p style="font-weight:600">${plan.above?"不介入":"价格在区间内，再核对条件"}</p><p class="muted">${item.note}</p></a>`;
-    }).join("")}
-    <section class="card core"><p class="k">第三行业</p><h2>今天不放</h2><p class="muted">医药只有联环药业、华北制药两个首板，药明还在跌。地产只有陆家嘴，万科和深物业没接。昭衍、深物业是9月30日的票，不放在这张主位。</p></section>
+    <p class="k sec">10月8日收盘 · 给10月9日 · 四套分开</p>
+    ${BOOKS.map(b=>`<section class="sec"><h2 style="font-size:1.25rem">${b.id}</h2><p class="muted">${b.rule}</p>${b.names.map(item=>{
+      const s=BY[item.code]; if(!s) return "";
+      return `<a class="card core" href="#${s.code}"><div class="row"><h2 style="font-size:1.35rem">${s.name}</h2><p class="${cls(s.chg)}" style="margin:0">${pct(s.chg)}</p></div><p class="muted" style="margin-top:.25rem">${s.code} · ${n2(s.px)}</p><p>${item.advice}</p></a>`;
+    }).join("")}</section>`).join("")}
     ${bookHtml()}
     <section class="card pad sec">
       <p class="k">历史库 · 按买法</p>
@@ -185,7 +207,7 @@ function home(){
     </section>
     <p class="k sec">其余观察，不是这张主位</p>
     <div class="tags">${LINES.map(x=>`<button class="${x===line?"on":""}" data-line="${x}">${x}</button>`).join("")}</div>
-    ${cores().filter(s=>!PICKS.some(item=>item.code===s.code)).map(s=>{
+    ${cores().filter(s=>!BOOKS.some(b=>b.names.some(n=>n.code===s.code))).map(s=>{
       const n=NOTES[s.code], plan=planLevels(s);
       return `<a class="card core" href="#${s.code}"><p class="k" style="color:var(--up)">${n.line} · ${n.role}</p><div class="row"><h2 style="font-size:1.25rem">${s.name}</h2><p class="${cls(s.chg)}" style="margin:0">${pct(s.chg)}</p></div><p class="muted">介入 ${plan.entry} · 离场 ${plan.exit}${plan.above?" · 不介入":""}</p></a>`;
     }).join("")}
@@ -213,8 +235,7 @@ function detail(code){
       <p>${maText(s.px, code)}</p>
       <div class="g3"><div><p class="k">支撑</p><p style="margin:0;font-weight:600">${g.support==null?"—":n2(g.support)}</p></div><div><p class="k">观察区间</p><p style="margin:0;font-weight:600">${entry}</p></div><div><p class="k">压力</p><p style="margin:0;font-weight:600">${n2(g.pressure)}</p></div></div>
       <div class="g3"><div><p class="k">介入区间</p><p style="margin:0;font-weight:600">${plan.entry}</p></div><div><p class="k">离场位置</p><p style="margin:0;font-weight:600">${plan.exit}</p></div><div><p class="k">现价</p><p style="margin:0;font-weight:600">${plan.above?"不介入":"可评估"}</p></div></div>
-      <div class="tags">${["短线","波段","趋势","长线"].map(x=>`<button data-style="${x}" class="${style===x?"on":""}">${x}</button>`).join("")}</div>
-      <p class="muted">${plan.why}</p>
+      <p class="muted">${playOf(code).length?playOf(code).map(x=>x.id+"。"+x.advice).join(" "):plan.why}</p>
     </section>
     <div class="switch"><button id="flat" class="${held?"":"on"}">空仓</button><button id="long" class="${held?"on":""}">持仓中</button></div>
     <p><b>${held?"持仓建议。 ":"空仓建议。 "}</b>${held?g.holding:g.action}</p>
@@ -267,7 +288,7 @@ function prefix(code){
 function visibleCodes(){
   if(page) return [page];
   if(q.trim()) return STOCKS.filter(s=>(s.code+s.name).includes(q.trim())).slice(0,12).map(s=>s.code);
-  return [...new Set([...book().map(x=>x.code), ...PICKS.map(x=>x.code), "600026", ...CORE])];
+  return [...new Set([...book().map(x=>x.code), ...BOOKS.flatMap(b=>b.names.map(n=>n.code)), ...CORE])];
 }
 function quoteClock(time){
   if(!time) return "等待行情";
