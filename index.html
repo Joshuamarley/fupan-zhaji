@@ -101,7 +101,7 @@ function maText(px, code){
   if(px<ma20) return "收盘价位于 20 日线 "+n2(ma20)+" 之下。趋势条件失效，不新开仓。";
   return "收盘价位于 10 日线 "+n2(ma10)+" 附近，20 日线 "+n2(ma20)+"。站回 5 日线 "+n2(ma5)+" 之前只观察。";
 }
-let q="", line="全部", page=null, held=false;
+let q="", line="全部", page=null, held=false, stateText="等待行情";
 const LINES=["全部","医药","锂电","地产","辅助"];
 function book(){ try{return JSON.parse(localStorage.getItem("fupan-book")||"[]")}catch(e){return[]} }
 function saveBook(items){ localStorage.setItem("fupan-book", JSON.stringify(items)) }
@@ -119,7 +119,7 @@ function home(){
   const watch=[["603259","药明康德",-3.19],["600276","恒瑞医药",-0.40],["301047","义翘神州",-7.06],["002074","国轩高科",6.10],["600241","时代万恒",9.98],["000002","万科Ａ",-4.69]];
   return `
   <header>
-    <div class="row"><h1>复盘札记</h1><p class="k" style="text-align:right">10月08日 16:14 已收盘</p></div>
+    <div class="row"><h1>复盘札记</h1><p class="k" style="text-align:right">${stateText}</p></div>
     <input id="q" placeholder="搜代码或名称，查你自己的票" value="${esc(q)}"/>
   </header>
   <div class="pad">
@@ -170,7 +170,7 @@ function detail(code){
     <a class="back" href="#home">返回札记</a>
     <p class="k" style="color:var(--up)">${n?n.line+" · "+n.role:"非本张核心"} · ${g.pattern}</p>
     <h2>${s.name}</h2>
-    <p class="muted">${s.code} · 10月08日 16:14 已收盘 · ${n2(s.px)} · ${pct(s.chg)}</p>
+    <p class="muted">${s.code} · ${stateText} · ${n2(s.px)} · ${pct(s.chg)}</p>
     <section class="card pad sec">
       <div class="g3"><div><p class="k">5日线</p><p style="margin:0;font-weight:600">${m?n2(m[0]):"—"}</p></div><div><p class="k">10日线</p><p style="margin:0;font-weight:600">${m?n2(m[1]):"—"}</p></div><div><p class="k">20日线</p><p style="margin:0;font-weight:600">${m?n2(m[2]):"—"}</p></div></div>
       <p>${maText(s.px, code)}</p>
@@ -217,6 +217,75 @@ function draw(){
   const drop=document.getElementById("drop");
   if(drop) drop.onclick=()=>{ saveBook(book().filter(x=>x.code!==page)); draw(); };
 }
+
+function prefix(code){
+  if(/^(92|83|87|43|82|8|4)/.test(code)) return "bj";
+  if(code.startsWith("6")||code.startsWith("5")||code.startsWith("9")) return "sh";
+  return "sz";
+}
+function visibleCodes(){
+  if(page) return [page];
+  if(q.trim()) return STOCKS.filter(s=>(s.code+s.name).includes(q.trim())).slice(0,12).map(s=>s.code);
+  return CORE.slice();
+}
+function quoteClock(time){
+  if(!time) return "等待行情";
+  const day=time.slice(0,10), hh=+time.slice(11,13), mm=+time.slice(14,16), mins=hh*60+mm;
+  const sh=new Date(Date.now()+8*3600*1000);
+  const today=sh.toISOString().slice(0,10);
+  const clock=time.slice(5,7)+"月"+time.slice(8,10)+"日 "+time.slice(11,16);
+  if(day!==today) return clock+" 已收盘";
+  const open=(mins>=570&&mins<=690)||(mins>=780&&mins<=900);
+  return open? clock+" 交易中" : clock+" 已收盘";
+}
+async function pullQuotes(codes){
+  if(!codes.length) return;
+  const url="https://qt.gtimg.cn/q="+codes.map(c=>prefix(c)+c).join(",");
+  const buf=await (await fetch(url)).arrayBuffer();
+  const text=new TextDecoder("gbk").decode(buf);
+  let latest="";
+  for(const block of text.split(";")){
+    const body=(block.match(/="([^"]*)"/)||[])[1];
+    if(!body||body==="1") continue;
+    const p=body.split("~");
+    const s=BY[p[2]];
+    const px=+p[3], hi=+p[33], lo=+p[34];
+    if(!s||!px||!hi||!lo) continue;
+    const amount=+((p[35]||"").split("/")[2]||0);
+    s.px=px; s.hi=hi; s.lo=lo; s.chg=+p[32]||0;
+    s.amt=Math.round(amount/1e8*100)/100;
+    s.turn=+p[38]||s.turn;
+    if(p[1]) s.name=p[1].replace(/\s/g,"");
+    const raw=p[30]||"";
+    if(raw.length>=12) latest=raw.slice(0,4)+"-"+raw.slice(4,6)+"-"+raw.slice(6,8)+" "+raw.slice(8,10)+":"+raw.slice(10,12);
+  }
+  if(latest) stateText=quoteClock(latest);
+}
+async function pullMa(codes){
+  await Promise.all(codes.filter(c=>BY[c]).slice(0,20).map(async code=>{
+    try{
+      const data=await (await fetch("https://web.ifzq.gtimg.cn/appstock/app/fqkline/get?param="+prefix(code)+code+",day,,,25,qfq")).json();
+      const pack=data.data[prefix(code)+code]||{};
+      const rows=pack.qfqday||pack.day||[];
+      const closes=rows.map(r=>+r[2]).filter(n=>n>0);
+      const avg=n=>{const a=closes.slice(-n); return a.length?a.reduce((x,y)=>x+y,0)/a.length:null};
+      const ma5=avg(5), ma10=avg(10), ma20=avg(20);
+      if(ma5&&ma10&&ma20) MA[code]=[ma5,ma10,ma20];
+    }catch(e){}
+  }));
+}
+let ticking=false;
+async function refreshLive(){
+  if(ticking) return;
+  ticking=true;
+  const codes=visibleCodes();
+  try{ await pullQuotes(codes); await pullMa(codes); draw(); }
+  catch(e){ if(stateText==="等待行情") stateText="行情暂时取不到"; }
+  ticking=false;
+}
+
 draw();
+refreshLive();
+setInterval(refreshLive, 20000);
 </script>
 </body></html>
