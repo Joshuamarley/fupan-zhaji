@@ -111,14 +111,7 @@ function planLevels(s){
   const lo=ma5*0.99, hi=ma5*1.03;
   return {entry:n2(lo)+"–"+n2(hi), exit:n2(ma5), above:s.px>hi, why:"短线只在5日线附近做。这笔先不亏，才算出手。现价高出区间就不参与。"};
 }
-function bookHtml(s){
-  if(!s.book) return "<p class=\"muted\">五档还在取。</p>";
-  const row=(px,vol,side)=>"<div class=\"row\" style=\"padding:2px 0\"><span class=\""+side+"\">"+n2(px)+"</span><span class=\"muted\">"+vol+" 手</span></div>";
-  const sells=s.book.sell.slice().reverse().map(x=>row(x[0],x[1],"down")).join("");
-  const buys=s.book.buy.map(x=>row(x[0],x[1],"up")).join("");
-  return "<p class=\"k\">五档</p>"+sells+"<div style=\"border-top:1px solid var(--line);margin:4px 0\"></div>"+buys;
-}
-  function maText(px, code){
+function maText(px, code){
   const m=MA[code];
   if(!m) return "日线数据未写入这份额外文件，暂以当日高低点作参考。";
   const [ma5,ma10,ma20]=m;
@@ -208,7 +201,6 @@ function detail(code){
       <div class="g3"><div><p class="k">介入区间</p><p style="margin:0;font-weight:600">${plan.entry}</p></div><div><p class="k">离场位置</p><p style="margin:0;font-weight:600">${plan.exit}</p></div><div><p class="k">现价</p><p style="margin:0;font-weight:600">${plan.above?"不介入":"可评估"}</p></div></div>
       <div class="tags">${["短线","波段","趋势","长线"].map(x=>`<button data-style="${x}" class="${style===x?"on":""}">${x}</button>`).join("")}</div>
       <p class="muted">${plan.why}</p>
-      ${bookHtml(s)}
     </section>
     <div class="switch"><button id="flat" class="${held?"":"on"}">空仓</button><button id="long" class="${held?"on":""}">持仓中</button></div>
     <p><b>${held?"持仓建议。 ":"空仓建议。 "}</b>${held?g.holding:g.action}</p>
@@ -290,7 +282,6 @@ async function pullQuotes(codes){
     s.px=px; s.hi=hi; s.lo=lo; s.chg=+p[32]||0;
     s.amt=Math.round(amount/1e8*100)/100;
     s.turn=+p[38]||s.turn;
-    s.book={buy:[[+p[9],+p[10]],[+p[11],+p[12]],[+p[13],+p[14]],[+p[15],+p[16]],[+p[17],+p[18]]], sell:[[+p[19],+p[20]],[+p[21],+p[22]],[+p[23],+p[24]],[+p[25],+p[26]],[+p[27],+p[28]]]};
     if(p[1]) s.name=p[1].replace(/\s/g,"");
     const raw=p[30]||"";
     if(raw.length>=12) latest=raw.slice(0,4)+"-"+raw.slice(4,6)+"-"+raw.slice(6,8)+" "+raw.slice(8,10)+":"+raw.slice(10,12);
