@@ -134,6 +134,17 @@ NOTES["601975"]={line:"油运",role:"本张核心",extra:"10月8日首板，中�
 const CLOSE={"603906":{name:"龙蟠科技",px:20.94,chg:9.98,hi:20.94,lo:19.20,amt:17.06},"601975":{name:"招商南油",px:4.97,chg:9.96,hi:4.97,lo:4.68,amt:14.67},"600026":{name:"中远海能",px:22.62,chg:10.02,hi:22.62,lo:21.70,amt:8.70},"603200":{name:"上海洗霸",px:49.21,chg:9.99,hi:49.21,lo:44.49,amt:15.34},"600241":{name:"时代万恒",px:10.69,chg:9.98,hi:10.69,lo:9.27,amt:3.26},"002074":{px:31.30,chg:6.10,hi:32.14,lo:29.47,amt:36.66}};
 for (const code in CLOSE) if (BY[code]) Object.assign(BY[code], CLOSE[code]);
 function book(){ try{return JSON.parse(localStorage.getItem("fupan-book")||"[]")}catch(e){return[]} }
+function bookHtml(){
+  const items=book();
+  if(!items.length) return `<section class="sec"><h2 style="font-size:1.125rem">持仓记录</h2><p class="muted">点进个股，填写成本和仓位。记录只留在本机，不计入历史库。</p></section>`;
+  const rows=items.map(item=>{
+    const s=BY[item.code];
+    const ret=s&&item.cost?(s.px/item.cost-1)*100:null;
+    const hit=ret==null?null:ret*(item.weight/10);
+    return `<a class="hit" href="#${item.code}"><span><b>${s?s.name:item.code}</b><br><span class="muted" style="font-size:12px">成本 ${n2(item.cost)} · ${item.weight} 成</span></span><span style="text-align:right"><span class="${cls(ret||0)}">${ret==null?"—":pct(ret)}</span><br><span class="muted" style="font-size:12px">账户 ${hit==null?"—":pct(hit)}</span></span></a>`;
+  }).join("");
+  return `<section class="sec"><h2 style="font-size:1.125rem">持仓记录</h2><section class="card sec">${rows}</section><p class="muted">只留在本机。现价变的时候，这里的涨跌一起变。不计入历史库。</p></section>`;
+}
 function saveBook(items){ localStorage.setItem("fupan-book", JSON.stringify(items)) }
 function cores(){
   return CORE.map(c=>BY[c]).filter(Boolean).filter(s=>{
@@ -161,6 +172,7 @@ function home(){
       return `<a class="card core" href="#${s.code}"><p class="k" style="color:var(--up)">${item.line} · ${item.role}</p><div class="row"><h2>${s.name}</h2><p class="${cls(s.chg)}" style="margin:0">${pct(s.chg)}</p></div><p class="muted" style="margin-top:.35rem">${n2(s.px)} · 介入 ${plan.entry} · 离场 ${plan.exit}</p><p style="font-weight:600">${plan.above?"不介入":"价格在区间内，再核对条件"}</p><p class="muted">${item.note}</p></a>`;
     }).join("")}
     <section class="card core"><p class="k">第三行业</p><h2>今天不放</h2><p class="muted">医药只有联环药业、华北制药两个首板，药明还在跌。地产只有陆家嘴，万科和深物业没接。昭衍、深物业是9月30日的票，不放在这张主位。</p></section>
+    ${bookHtml()}
     <section class="card pad sec">
       <p class="k">历史库 · 按买法</p>
       <div class="g3">
@@ -181,7 +193,6 @@ function home(){
       <p class="k">这张的环境</p>
       <p>这张按10月8日收盘重选，不是9月30日那张。上证收3811.90，跌0.79%。涨停43，炸板32。锂电涨停集中，油运有两只大容量首板。仓位仍是0到1成。涨停价不追。</p>
     </section>
-    <section class="sec"><h2 style="font-size:1.125rem">持仓记录</h2><p class="muted">在个股页填写成本和仓位。记录只留在本机，不计入历史库。</p></section>
     `}
   </div>`;
 }
@@ -256,7 +267,7 @@ function prefix(code){
 function visibleCodes(){
   if(page) return [page];
   if(q.trim()) return STOCKS.filter(s=>(s.code+s.name).includes(q.trim())).slice(0,12).map(s=>s.code);
-  return [...new Set([...PICKS.map(x=>x.code), "600026", ...CORE])];
+  return [...new Set([...book().map(x=>x.code), ...PICKS.map(x=>x.code), "600026", ...CORE])];
 }
 function quoteClock(time){
   if(!time) return "等待行情";
