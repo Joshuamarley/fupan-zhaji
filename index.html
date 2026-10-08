@@ -92,12 +92,31 @@ function guide(s){
 }
 function planLevels(s){
   const m=MA[s.code];
-  if(m){
-    const lo=m[0]*0.99, hi=m[0]*1.03;
-    return {entry:n2(lo)+"–"+n2(hi), exit:n2(m[0]), above:s.px>hi};
-  }
   const g=guide(s);
-  return {entry:g.entryLow==null?"不设":n2(g.entryLow)+"–"+n2(g.entryHigh), exit:g.support==null?"不设":n2(g.support), above:g.entryHigh!=null&&s.px>g.entryHigh};
+  if(!m){
+    return {entry:g.entryLow==null?"不设":n2(g.entryLow)+"–"+n2(g.entryHigh), exit:g.support==null?"不设":n2(g.support), above:g.entryHigh!=null&&s.px>g.entryHigh, why:"日线还没取到，先只用当日高低。不在区间内不参与。"};
+  }
+  const ma5=m[0], ma20=m[2];
+  if(style==="波段"){
+    const lo=Math.min(ma5,ma20), hi=Math.max(ma5,ma20);
+    return {entry:n2(lo)+"–"+n2(hi), exit:n2(ma20), above:s.px>hi*1.03||s.px<lo, why:"只做5日线到20日线之间的回踩。跌破20日线离场。"};
+  }
+  if(style==="趋势"){
+    const lo=ma20*0.99, hi=ma20*1.02;
+    return {entry:n2(lo)+"–"+n2(hi), exit:n2(ma20), above:s.px>ma5*1.03||s.px<ma20, why:"站上20日线且回踩不破才做。离开5日线太远不追。"};
+  }
+  if(style==="长线"){
+    return {entry:"不按一天的价格进", exit:"逻辑被证伪", above:true, why:"长线不因为一天涨跌进场。20日线 "+n2(ma20)+" 只作复核。"};
+  }
+  const lo=ma5*0.99, hi=ma5*1.03;
+  return {entry:n2(lo)+"–"+n2(hi), exit:n2(ma5), above:s.px>hi, why:"短线只在5日线附近做。这笔先不亏，才算出手。现价高出区间就不参与。"};
+}
+function bookHtml(s){
+  if(!s.book) return "<p class=\"muted\">五档还在取。</p>";
+  const row=(px,vol,side)=>"<div class=\"row\" style=\"padding:2px 0\"><span class=\""+side+"\">"+n2(px)+"</span><span class=\"muted\">"+vol+" 手</span></div>";
+  const sells=s.book.sell.slice().reverse().map(x=>row(x[0],x[1],"down")).join("");
+  const buys=s.book.buy.map(x=>row(x[0],x[1],"up")).join("");
+  return "<p class=\"k\">五档</p>"+sells+"<div style=\"border-top:1px solid var(--line);margin:4px 0\"></div>"+buys;
 }
   function maText(px, code){
   const m=MA[code];
@@ -110,7 +129,8 @@ function planLevels(s){
   if(px<ma20) return "收盘价位于 20 日线 "+n2(ma20)+" 之下。趋势条件失效，不新开仓。";
   return "收盘价位于 10 日线 "+n2(ma10)+" 附近，20 日线 "+n2(ma20)+"。站回 5 日线 "+n2(ma5)+" 之前只观察。";
 }
-let q="", line="全部", page=null, held=false, stateText="等待行情";
+let q="", line="全部", page=null, held=false, stateText="等待行情", style="短线";
+try{ style=localStorage.getItem("fupan-style")||"短线"; }catch(e){}
 const LINES=["全部","医药","锂电","地产","辅助"];
 function book(){ try{return JSON.parse(localStorage.getItem("fupan-book")||"[]")}catch(e){return[]} }
 function saveBook(items){ localStorage.setItem("fupan-book", JSON.stringify(items)) }
@@ -162,9 +182,10 @@ function home(){
     </section>
     <section class="sec"><h2 style="font-size:1.125rem">持仓记录</h2><p class="muted">在个股页填写成本和仓位。记录只留在本机，不计入札记样本。</p></section>
     <div class="tags">${LINES.map(x=>`<button class="${x===line?"on":""}" data-line="${x}">${x}</button>`).join("")}</div>
+    <div class="tags">${["短线","波段","趋势","长线"].map(x=>`<button data-style="${x}" class="${style===x?"on":""}">${x}</button>`).join("")}</div>
     ${cores().map(s=>{
-      const g=guide(s), n=NOTES[s.code], m=MA[s.code];
-      return `<a class="card core" href="#${s.code}"><p class="k" style="color:var(--up)">${n.line} · ${n.role}</p><div class="row"><h2 style="font-size:1.25rem">${s.name}</h2><p class="${cls(s.chg)}" style="margin:0">${pct(s.chg)}</p></div><div class="g3"><div><p class="k">5日线</p><p style="margin:0">${m?n2(m[0]):"—"}</p></div><div><p class="k">10日线</p><p style="margin:0">${m?n2(m[1]):"—"}</p></div><div><p class="k">20日线</p><p style="margin:0">${m?n2(m[2]):"—"}</p></div></div><p class="muted">${g.where}</p></a>`;
+      const g=guide(s), n=NOTES[s.code], m=MA[s.code], plan=planLevels(s);
+      return `<a class="card core" href="#${s.code}"><p class="k" style="color:var(--up)">${n.line} · ${n.role} · ${style}</p><div class="row"><h2 style="font-size:1.25rem">${s.name}</h2><p class="${cls(s.chg)}" style="margin:0">${pct(s.chg)}</p></div><div class="g3"><div><p class="k">5日线</p><p style="margin:0">${m?n2(m[0]):"—"}</p></div><div><p class="k">介入</p><p style="margin:0">${plan.entry}</p></div><div><p class="k">离场</p><p style="margin:0">${plan.exit}</p></div></div><p class="muted">${plan.above?"现价不介入。":""}${plan.why}</p></a>`;
     }).join("")}
     `}
   </div>`;
@@ -186,6 +207,9 @@ function detail(code){
       <p>${maText(s.px, code)}</p>
       <div class="g3"><div><p class="k">支撑</p><p style="margin:0;font-weight:600">${g.support==null?"—":n2(g.support)}</p></div><div><p class="k">观察区间</p><p style="margin:0;font-weight:600">${entry}</p></div><div><p class="k">压力</p><p style="margin:0;font-weight:600">${n2(g.pressure)}</p></div></div>
       <div class="g3"><div><p class="k">介入区间</p><p style="margin:0;font-weight:600">${plan.entry}</p></div><div><p class="k">离场位置</p><p style="margin:0;font-weight:600">${plan.exit}</p></div><div><p class="k">现价</p><p style="margin:0;font-weight:600">${plan.above?"不介入":"可评估"}</p></div></div>
+      <div class="tags">${["短线","波段","趋势","长线"].map(x=>`<button data-style="${x}" class="${style===x?"on":""}">${x}</button>`).join("")}</div>
+      <p class="muted">${plan.why}</p>
+      ${bookHtml(s)}
     </section>
     <div class="switch"><button id="flat" class="${held?"":"on"}">空仓</button><button id="long" class="${held?"on":""}">持仓中</button></div>
     <p><b>${held?"持仓建议。 ":"空仓建议。 "}</b>${held?g.holding:g.action}</p>
@@ -209,6 +233,7 @@ function draw(){
     input.oninput=e=>{ q=e.target.value; page=null; draw(); const n=document.getElementById("q"); if(n){ n.focus(); n.setSelectionRange(q.length,q.length);} };
   }
   app.querySelectorAll("[data-line]").forEach(b=>b.onclick=()=>{ line=b.dataset.line; draw(); });
+  app.querySelectorAll("[data-style]").forEach(b=>b.onclick=()=>{ style=b.dataset.style; try{localStorage.setItem("fupan-style", style)}catch(e){} draw(); });
   app.querySelectorAll("a[href^='#']").forEach(a=>a.onclick=e=>{
     e.preventDefault();
     const id=a.getAttribute("href").slice(1);
@@ -266,6 +291,7 @@ async function pullQuotes(codes){
     s.px=px; s.hi=hi; s.lo=lo; s.chg=+p[32]||0;
     s.amt=Math.round(amount/1e8*100)/100;
     s.turn=+p[38]||s.turn;
+    s.book={buy:[[+p[9],+p[10]],[+p[11],+p[12]],[+p[13],+p[14]],[+p[15],+p[16]],[+p[17],+p[18]]], sell:[[+p[19],+p[20]],[+p[21],+p[22]],[+p[23],+p[24]],[+p[25],+p[26]],[+p[27],+p[28]]]};
     if(p[1]) s.name=p[1].replace(/\s/g,"");
     const raw=p[30]||"";
     if(raw.length>=12) latest=raw.slice(0,4)+"-"+raw.slice(4,6)+"-"+raw.slice(6,8)+" "+raw.slice(8,10)+":"+raw.slice(10,12);
@@ -286,17 +312,27 @@ async function pullMa(codes){
   }));
 }
 let ticking=false;
+let maTick=0;
 async function refreshLive(){
   if(ticking) return;
   ticking=true;
   const codes=visibleCodes();
-  try{ await pullQuotes(codes); await pullMa(codes); draw(); }
-  catch(e){ if(stateText==="等待行情") stateText="行情暂时取不到"; }
+  try{
+    await pullQuotes(codes);
+    maTick++;
+    if(maTick===1 || maTick%12===0) await pullMa(codes);
+    const ae=document.activeElement;
+    if(!(ae && ae.tagName==="INPUT")){
+      const y=window.scrollY;
+      draw();
+      window.scrollTo(0,y);
+    }
+  }catch(e){ if(stateText==="等待行情") stateText="行情暂时取不到"; }
   ticking=false;
 }
 
 draw();
 refreshLive();
-setInterval(refreshLive, 20000);
+setInterval(refreshLive, 5000);
 </script>
 </body></html>
