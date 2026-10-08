@@ -90,7 +90,16 @@ function guide(s){
   }
   return g;
 }
-function maText(px, code){
+function planLevels(s){
+  const m=MA[s.code];
+  if(m){
+    const lo=m[0]*0.99, hi=m[0]*1.03;
+    return {entry:n2(lo)+"–"+n2(hi), exit:n2(m[0]), above:s.px>hi};
+  }
+  const g=guide(s);
+  return {entry:g.entryLow==null?"不设":n2(g.entryLow)+"–"+n2(g.entryHigh), exit:g.support==null?"不设":n2(g.support), above:g.entryHigh!=null&&s.px>g.entryHigh};
+}
+  function maText(px, code){
   const m=MA[code];
   if(!m) return "日线数据未写入这份额外文件，暂以当日高低点作参考。";
   const [ma5,ma10,ma20]=m;
@@ -134,9 +143,9 @@ function home(){
       <div class="line"><p style="margin:0;font-weight:600">医药</p><p>昭衍新药涨 5.60%，药明康德跌 3.19%，义翘神州跌 7.06%。容量和弹性没有共振，按个股处理，不按主线加仓。</p><p class="muted">药明不再创新低、昭衍守住 5 日线，再观察。昭衍单独冲高，不追。</p></div>
       <div class="line"><p style="margin:0;font-weight:600">地产</p><p>上一张的条件是万科和深物业同时承接。10 月 8 日万科跌 4.69%，深物业跌 0.98%，条件没有满足。陆家嘴 2 板不能替代容量。这个方向今日撤出。</p></div>
       <div class="line"><p class="k">出手三只 · 均不追价</p>
-        <p style="font-weight:600">上海洗霸 <span class="muted" style="font-weight:400;font-size:12px">603200</span></p><p class="muted">收 49.21，5 日线 41.98。3 板，偏离过大。等回踩 5 日线。电池若无其他涨停、只剩这一只，放弃。</p>
-        <p style="font-weight:600">国轩高科 <span class="muted" style="font-weight:400;font-size:12px">002074</span></p><p class="muted">收 31.30，5 日线 28.46。看容量，不打板。洗霸维持、自身不破 5 日线，试错 0.5 成。跌破即退出。</p>
-        <p style="font-weight:600">昭衍新药 <span class="muted" style="font-weight:400;font-size:12px">603127</span></p><p class="muted">收 52.06，5 日线 47.60。药明未企稳前不新开。医药未共振，不把单票当方向。</p>
+        <p style="font-weight:600">上海洗霸 <span class="muted" style="font-weight:400;font-size:12px">603200</span></p><p class="muted">收 49.21。介入区间 41.56–43.24，离场 41.98。现价不在区间内，不介入。跌破 41.98 退出。电池若无其他涨停，这个区间也放弃。</p>
+        <p style="font-weight:600">国轩高科 <span class="muted" style="font-weight:400;font-size:12px">002074</span></p><p class="muted">收 31.30。介入区间 28.18–29.31，离场 28.46。洗霸还在、价格进区间，试错 0.5 成。现价不追。收盘跌破 28.46 退出。</p>
+        <p style="font-weight:600">昭衍新药 <span class="muted" style="font-weight:400;font-size:12px">603127</span></p><p class="muted">收 52.06。介入区间 47.12–49.03，离场 47.60。药明未企稳不新开。现价不在区间内。收盘跌破 47.60 退出。</p>
       </div>
       <p class="muted">只观察，不计入出手：时代万恒 4 板，偏离 5 日线，不排队。深物业、万科今日不作为核心。新华传媒 8 板单独看，不外推。紫竹高科、九阳股份不属于这三条线。</p>
       <p>本张自 10 月 8 日收盘起算。9 月 30 日那张样本不改。札记给的是框架和条件，不是每日报票。一次做对，不能说明方法已经掌握。</p>
@@ -165,6 +174,7 @@ function detail(code){
   if(!s) return home();
   const g=guide(s), n=NOTES[code], m=MA[code];
   const entry=g.entryLow==null?"—":n2(g.entryLow)+" – "+n2(g.entryHigh);
+  const plan=planLevels(s);
   const item=book().find(x=>x.code===code);
   return `<div class="pad" style="padding-top:1rem">
     <a class="back" href="#home">返回札记</a>
@@ -175,6 +185,7 @@ function detail(code){
       <div class="g3"><div><p class="k">5日线</p><p style="margin:0;font-weight:600">${m?n2(m[0]):"—"}</p></div><div><p class="k">10日线</p><p style="margin:0;font-weight:600">${m?n2(m[1]):"—"}</p></div><div><p class="k">20日线</p><p style="margin:0;font-weight:600">${m?n2(m[2]):"—"}</p></div></div>
       <p>${maText(s.px, code)}</p>
       <div class="g3"><div><p class="k">支撑</p><p style="margin:0;font-weight:600">${g.support==null?"—":n2(g.support)}</p></div><div><p class="k">观察区间</p><p style="margin:0;font-weight:600">${entry}</p></div><div><p class="k">压力</p><p style="margin:0;font-weight:600">${n2(g.pressure)}</p></div></div>
+      <div class="g3"><div><p class="k">介入区间</p><p style="margin:0;font-weight:600">${plan.entry}</p></div><div><p class="k">离场位置</p><p style="margin:0;font-weight:600">${plan.exit}</p></div><div><p class="k">现价</p><p style="margin:0;font-weight:600">${plan.above?"不介入":"可评估"}</p></div></div>
     </section>
     <div class="switch"><button id="flat" class="${held?"":"on"}">空仓</button><button id="long" class="${held?"on":""}">持仓中</button></div>
     <p><b>${held?"持仓建议。 ":"空仓建议。 "}</b>${held?g.holding:g.action}</p>
